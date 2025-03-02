@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: patrimo_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: toor
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      MONGODB_URI: mongodb://root:toor@mongodb:27017/patrimo?authSource=admin
+      PYTHONUNBUFFERED: 1
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
