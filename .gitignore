@@ -48,6 +48,9 @@ htmlcov/
 .hypothesis/
 .python-version
 
+# Output files
+*.png
+
 # Database files
 *.db
 *.json
