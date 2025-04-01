@@ -6,6 +6,7 @@ import json
 import os
 import pandas as pd
 import yfinance as yf
+import numpy as np
 from typing import Dict, List, Optional, Tuple
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "data.json")
@@ -91,20 +92,12 @@ class AssetManager:
             search_result = yf.Ticker(isin).info
             if 'symbol' in search_result:
                 return search_result['symbol']
-                
-            # If not found, try some common mappings
-            # This would need to be expanded or replaced with a proper API
-            common_mappings = {
-                "FR0011550193": "PAEEM.PA",  # Amundi MSCI Emerging Markets ETF
-                "FR0011550185": "PAASI.PA",  # Amundi MSCI Pacific ex Japan ETF
-                "FR0013380607": "EESM.PA",   # BNP Paribas Easy ECPI Global ESG Med Tech ETF
-                "FR0013412012": "EUBS.PA",   # BNP Paribas Easy ECPI Circular Economy Leaders ETF
-                "FR0013411980": "ESG5.PA"    # BNP Paribas Easy ECPI Global ESG Blue Economy ETF
-            }
-            
-            if isin in common_mappings:
-                return common_mappings[isin]
-        
+        else:
+            # For other ISINs, we can try to search for the ticker directly
+            search_result = yf.Ticker(isin).info
+            if 'symbol' in search_result:
+                return search_result['symbol']
+        # If no ticker found, return None
         return None
     
     def get_asset_name(self, isin: str, ticker: Optional[str] = None) -> Optional[str]:
@@ -140,38 +133,53 @@ class AssetManager:
             
         return None
     
-    def get_historical_data(self, tickers: List[str], period: str = "1y") -> pd.DataFrame:
+    def get_historical_data(self, tickers: List[str], start: str = "2023-01-01", end : str = "2024-12-31") -> pd.DataFrame:
         """
-        Get historical price data for a list of tickers.
+        Get historical price data and returns for a list of tickers.
         
         Args:
             tickers: List of ticker symbols
-            period: Period for historical data (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+            period: Period for historical data
             
         Returns:
-            DataFrame with price data
+            DataFrame with returns data (not prices)
         """
         try:
-            data = yf.download(tickers, period=period, group_by='ticker')
+            # Download the data
+            data = yf.download(tickers, start=start, end=end, group_by='ticker')
+            
             # For a single ticker, the structure is different
             if len(tickers) == 1:
                 ticker = tickers[0]
                 data.columns = pd.MultiIndex.from_product([[ticker], data.columns])
             
-            # Reformat to get just the close prices in a clean DataFrame
+            # Get close prices in a clean DataFrame
             close_prices = pd.DataFrame()
+            close_prices = close_prices.tz_localize(None)
+            close_prices = close_prices.asfreq('B')
             for ticker in tickers:
-                if (ticker, 'Close') in data.columns:
+                if (ticker, 'Adj Close') in data.columns:
+                    close_prices[ticker] = data[(ticker, 'Adj Close')]
+                elif (ticker, 'Close') in data.columns:
                     close_prices[ticker] = data[(ticker, 'Close')]
             
-            return close_prices
+            # Drop rows with too many NaN values
+            close_prices = close_prices.dropna(how='all')
+            
+            # Calculate returns instead of using raw prices
+            # This is critical for proper correlation calculation
+            returns = np.log(close_prices/close_prices.shift(1)).dropna()
+            
+            print(f"Calculated returns for {len(returns)} trading days")
+            
+            return returns
         except Exception as e:
             print(f"Error fetching historical data: {e}")
             return pd.DataFrame()
     
-    def get_correlation_matrix(self, period: str = "1y") -> Tuple[pd.DataFrame, Dict[str, str]]:
+    def get_correlation_matrix(self, start: str = "2023-01-01", end: str = "2024-12-31") -> Tuple[pd.DataFrame, Dict[str, str]]:
         """
-        Calculate correlation matrix for assets in the ISIN list.
+        Calculate correlation matrix for assets in the ISIN list using returns.
         
         Returns:
             Tuple of (correlation matrix, mapping of tickers to names)
@@ -193,12 +201,18 @@ class AssetManager:
         if not tickers:
             return pd.DataFrame(), {}
         
-        # Get historical data
-        price_data = self.get_historical_data(tickers, period)
+        # Get returns data instead of price data
+        returns_data = self.get_historical_data(tickers, start, end)
         
         # Calculate correlation
-        if not price_data.empty:
-            correlation = price_data.corr()
+        if not returns_data.empty:
+            # Verify we have enough data points
+            print(f"Data points per ticker:")
+            for ticker in returns_data.columns:
+                print(f" - {ticker}: {returns_data[ticker].count()} valid returns")
+            
+            correlation = returns_data.corr(method='pearson')
+            
             # Rename columns and index to use names instead of tickers
             correlation.columns = [ticker_to_name.get(t, t) for t in correlation.columns]
             correlation.index = [ticker_to_name.get(t, t) for t in correlation.index]
