@@ -61,15 +61,16 @@ def plot_correlation_matrix(correlation_df, title="Asset Correlation Matrix"):
     # Draw the heatmap with only lower triangle (no diagonal)
     ax = sns.heatmap(
         correlation_df,
-        annot=True,            # Show the correlation values
-        mask=mask,             # Only show the lower triangle without diagonal
-        cmap='coolwarm',       # Color map (red for negative, blue for positive)
-        vmin=vmin, vmax=vmax,  # Dynamic value range
-        center=0,              # Center the colormap at 0
-        square=True,           # Make sure the cells are square
-        linewidths=.5,         # Width of the dividing lines
-        cbar_kws={"shrink": .5},  # Colorbar settings
-        fmt=".2f"              # Format for annotations (2 decimal places)
+        annot=True,             # Show the correlation values
+        mask=mask,              # Only show the lower triangle without diagonal
+        cmap='RdBu_r',          # Blue to Red (direct gradient)
+        vmin=vmin,              # Use the dynamic minimum value
+        vmax=vmax,              # Use the dynamic maximum value
+        center=None,            # No centering to have a direct gradient
+        square=True,            # Make sure the cells are square
+        linewidths=.5,          # Width of the dividing lines
+        cbar_kws={"shrink": .5},# Colorbar settings
+        fmt=".2f"               # Format for annotations (2 decimal places)
     )
     
     # Adjust labels - create a list of positions for visible ticks
