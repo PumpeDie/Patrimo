@@ -51,3 +51,6 @@ htmlcov/
 # Database files
 *.db
 *.json
+
+# Ensure that the package.json file is not ignored
+!package.json

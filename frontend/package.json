@@ -1,0 +1,26 @@
+{
+  "name": "patrimo-frontend",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^2.8.0",
+    "lucide-react": "^0.294.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.0",
+    "postcss": "^8",
+    "tailwindcss": "^3"
+  }
+}
