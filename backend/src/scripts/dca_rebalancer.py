@@ -22,8 +22,10 @@ dca_per_month = 500
 initial_cash = 2820  # Liquidité immédiate disponible le premier mois
 nb_months = 12
 
-# DataFrame pour stocker les résultats
-df = pd.DataFrame(columns=["Mois"] + list(invest_init.keys()))
+# DataFrame pour stocker les investissements mensuels détaillés
+investment_df = pd.DataFrame(columns=["Mois"] + list(invest_init.keys()) + ["Total_Investi"])
+# DataFrame pour stocker l'évolution du portefeuille
+portfolio_df = pd.DataFrame(columns=["Mois"] + list(invest_init.keys()) + ["Total_Portefeuille"])
 
 # État actuel du portefeuille
 current_alloc = invest_init.copy()
@@ -48,28 +50,45 @@ for month in range(1, nb_months + 1):
     positive_gaps = {k: v for k, v in gaps.items() if v > 0}
     total_positive_gaps = sum(positive_gaps.values())
     
+    # Dictionnaire pour stocker les investissements de ce mois
+    monthly_investments = {k: 0 for k in current_alloc.keys()}
+    
     # Si il y a des écarts positifs, répartir l'investissement proportionnellement
     if total_positive_gaps > 0:
         for k in current_alloc:
             if k in positive_gaps:
                 proportion = positive_gaps[k] / total_positive_gaps
-                current_alloc[k] += monthly_investment * proportion
+                investment_amount = monthly_investment * proportion
+                current_alloc[k] += investment_amount
+                monthly_investments[k] = investment_amount
     else:
         # Si pas d'écarts positifs, répartir selon les cibles
         for k in current_alloc:
-            current_alloc[k] += monthly_investment * target_alloc[k]
+            investment_amount = monthly_investment * target_alloc[k]
+            current_alloc[k] += investment_amount
+            monthly_investments[k] = investment_amount
 
-    # Stocker l’état du mois
+    # Stocker l'état du mois (portefeuille total)
     row = {"Mois": month}
     row.update(current_alloc)
-    df.loc[len(df)] = row
+    row["Total_Portfolio"] = sum(current_alloc.values())
+    portfolio_df.loc[len(portfolio_df)] = row
+    
+    # Stocker les investissements du mois
+    investment_row = {"Mois": month}
+    investment_row.update(monthly_investments)
+    investment_row["Total_Investi"] = monthly_investment
+    investment_df.loc[len(investment_df)] = investment_row
 
-# Affichage du tableau
-print(df)
+# Affichage des tableaux
+print("=== INVESTISSEMENTS MENSUELS DETAILLES ===")
+print(investment_df.round(2))
+print("\n=== EVOLUTION DU PORTEFEUILLE ===")
+print(portfolio_df.round(2))
 
 # Graphique
 for col in invest_init.keys():
-    plt.plot(df["Mois"], df[col], label=col)
+    plt.plot(portfolio_df["Mois"], portfolio_df[col], label=col)
 
 plt.title("Évolution du portefeuille (simulation DCA)")
 plt.xlabel("Mois")
