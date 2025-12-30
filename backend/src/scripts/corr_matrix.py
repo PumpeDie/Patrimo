@@ -2,10 +2,9 @@
 Script for calculating the correlation matrix between ETFs and assets.
 
 This script:
-1. Reads ISIN codes from the data file
-2. Retrieves ticker symbols for each ISIN
-3. Fetches historical price data
-4. Calculates and displays the correlation matrix
+1. Reads ETF data from etfs.json
+2. Fetches historical price data for each ETF
+3. Calculates and displays the correlation matrix
 """
 
 import os
@@ -63,7 +62,7 @@ def plot_correlation_matrix(correlation_df, title="Asset Correlation Matrix"):
         correlation_df,
         annot=True,             # Show the correlation values
         mask=mask,              # Only show the lower triangle without diagonal
-        cmap='RdBu_r',          # Blue to Red (direct gradient)
+        cmap='coolwarm',        # Blue to Red gradient (blue=low, red=high)
         vmin=vmin,              # Use the dynamic minimum value
         vmax=vmax,              # Use the dynamic maximum value
         center=None,            # No centering to have a direct gradient
@@ -108,7 +107,8 @@ def main():
         
         # Get the correlation matrix
         print("Calculating correlation matrix...")
-        correlation, ticker_to_name = asset_manager.get_correlation_matrix(start="2023-01-01", end="2024-12-31")
+        # Use a wider date range to accommodate different ETF launch dates
+        correlation, ticker_to_name = asset_manager.get_correlation_matrix_from_etfs(start="2020-01-01", end="2025-12-16")
         
         if correlation.empty:
             print("No data available to calculate correlations.")
