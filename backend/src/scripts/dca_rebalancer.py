@@ -15,20 +15,25 @@ with open(data_file, 'r', encoding='utf-8') as f:
 # Recuperer les prix actuels via yfinance
 print("Récupération des prix actuels des ETF...")
 etf_prices = {}
-tickers_list = [etf["ticker"] for etf in etfs_data["etfs"]]
-tickers_data = yf.Tickers(" ".join(tickers_list))
 
 for etf in etfs_data["etfs"]:
     ticker = etf["ticker"]
     try:
-        current_price = tickers_data.tickers[ticker].info.get('regularMarketPrice') or \
-                       tickers_data.tickers[ticker].info.get('currentPrice') or \
-                       tickers_data.tickers[ticker].fast_info['lastPrice']
-        etf_prices[etf["name"]] = current_price
-        print(f"  {etf['name']:15} ({ticker}): {current_price:.2f}€")
+        # Methode plus robuste: creer un ticker individuel
+        ticker_obj = yf.Ticker(ticker)
+        
+        # Essayer avec l'historique du dernier jour (plus fiable)
+        hist = ticker_obj.history(period="1d")
+        if not hist.empty and 'Close' in hist.columns:
+            current_price = hist['Close'].iloc[-1]
+            etf_prices[etf["name"]] = current_price
+            print(f"  {etf['name']:15} ({ticker}): {current_price:.2f}€")
+        else:
+            raise ValueError("No price data available")
+            
     except Exception as e:
-        # Fallback sur le prix moyen si l'API echoue
-        print(f"  {etf['name']:15} ({ticker}): Erreur API, utilisation prix moyen {etf['averagePrice']:.2f}€")
+        # Afficher l'erreur exacte pour debug
+        print(f"  {etf['name']:15} ({ticker}): Erreur ({type(e).__name__}: {str(e)}), utilisation prix moyen {etf['averagePrice']:.2f}€")
         etf_prices[etf["name"]] = etf["averagePrice"]
 
 print()
@@ -40,15 +45,15 @@ for etf in etfs_data["etfs"]:
 
 # Ponderations cibles
 target_alloc = {
-    "MSCI World": 0.65,
-    "S&P 500": 0.15,
-    "Stoxx 50": 0.15,
-    "Emerging Asia": 0.05,
+    "MSCI World": 0.69,
+    "S&P 500": 0.01,
+    "Stoxx 50": 0.2,
+    "Emerging Asia": 0.1,
 }
 
 # Parametres du DCA
-dca_per_month = 1030
-initial_cash = 2.07
+dca_per_month = 8075.22
+initial_cash = 0
 
 # Frequences d'investissement depuis le JSON
 investment_frequencies = {etf["name"]: etf["frequency"] for etf in etfs_data["etfs"]}
